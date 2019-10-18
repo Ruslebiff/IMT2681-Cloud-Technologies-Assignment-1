@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -11,8 +12,10 @@ import (
 var StartTime = time.Now()
 
 func main() {
-	port := "8080" // define http port to use
-
+	port := os.Getenv("PORT") // auto assign port, needed for heroku support
+	if port == "" {
+		port = "8080"
+	}
 	http.HandleFunc("/", handlerNil)
 	http.HandleFunc("/conservation/v1/country/", handlerCountry)
 	http.HandleFunc("/conservation/v1/species/", handlerSpecies)
