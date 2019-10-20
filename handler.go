@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -21,12 +20,14 @@ func handlerDiag(w http.ResponseWriter, r *http.Request) {
 	// GET-requests
 	gbifget, err := http.Get(GBIFRoot)
 	if err != nil {
-		log.Fatalln(err)
+		http.Error(w, "API lookup failed", http.StatusServiceUnavailable)
+		fmt.Println(http.StatusServiceUnavailable)
 	}
 
 	restcountriesget, err := http.Get(RestcountriesRoot)
 	if err != nil {
-		log.Fatalln(err)
+		http.Error(w, "API lookup failed", http.StatusServiceUnavailable)
+		fmt.Println(http.StatusServiceUnavailable)
 	}
 
 	// close connection, prevent resource leak if get-request fails
@@ -68,7 +69,8 @@ func handlerCountry(w http.ResponseWriter, r *http.Request) {
 		// Get country info
 		respcountry, err := http.Get(RestcountriesRoot + "alpha/" + parts[4] + "/")
 		if err != nil {
-			log.Fatalln(err)
+			http.Error(w, "API lookup failed", http.StatusServiceUnavailable)
+			fmt.Println(http.StatusServiceUnavailable)
 		}
 
 		// Close connection, prevent resource leak
@@ -77,7 +79,8 @@ func handlerCountry(w http.ResponseWriter, r *http.Request) {
 		// Read body data for country
 		body, err := ioutil.ReadAll(respcountry.Body)
 		if err != nil {
-			log.Fatalln(err)
+			http.Error(w, "Reading error", http.StatusInternalServerError)
+			fmt.Println(http.StatusInternalServerError)
 		}
 
 		// Parsing json for country info
@@ -86,7 +89,8 @@ func handlerCountry(w http.ResponseWriter, r *http.Request) {
 		// Get species info for specified country
 		respspecies, err := http.Get(GBIFRoot + "occurrence/search?country=" + parts[4] + getrequestlimit)
 		if err != nil {
-			log.Fatalln(err)
+			http.Error(w, "API lookup failed", http.StatusServiceUnavailable)
+			fmt.Println(http.StatusServiceUnavailable)
 		}
 
 		// Close connection, prevent resource leak
@@ -95,7 +99,8 @@ func handlerCountry(w http.ResponseWriter, r *http.Request) {
 		// Read body data for species
 		bodyspecies, err := ioutil.ReadAll(respspecies.Body)
 		if err != nil {
-			log.Fatalln(err)
+			http.Error(w, "Reading error", http.StatusInternalServerError)
+			fmt.Println(http.StatusInternalServerError)
 		}
 
 		// parsing json for species in country
@@ -105,6 +110,11 @@ func handlerCountry(w http.ResponseWriter, r *http.Request) {
 		for i := range R.Resnumber {
 			C.Species = append(C.Species, R.Resnumber[i].Species)
 			C.Specieskey = append(C.Specieskey, R.Resnumber[i].Specieskey)
+		}
+
+		if C.Code == "" {
+			http.Error(w, "Invalid country code", http.StatusBadRequest)
+			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -124,12 +134,14 @@ func handlerSpecies(w http.ResponseWriter, r *http.Request) {
 	if len(parts) >= 5 && parts[4] != "" {
 		resp, err := http.Get(GBIFRoot + "species/" + parts[4] + "/")
 		if err != nil {
-			log.Fatalln(err)
+			http.Error(w, "API lookup failed", http.StatusServiceUnavailable)
+			fmt.Println(http.StatusServiceUnavailable)
 		}
 
 		respyear, err := http.Get(GBIFRoot + "species/" + parts[4] + "/name/")
 		if err != nil {
-			log.Fatalln(err)
+			http.Error(w, "API lookup failed", http.StatusServiceUnavailable)
+			fmt.Println(http.StatusServiceUnavailable)
 		}
 
 		// close connection, prevent resource leak
@@ -139,7 +151,8 @@ func handlerSpecies(w http.ResponseWriter, r *http.Request) {
 		// read result for /species/*
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			log.Fatalln(err)
+			http.Error(w, "Reading error", http.StatusInternalServerError)
+			fmt.Println(http.StatusInternalServerError)
 		}
 
 		// json parsing for /species/*
@@ -148,7 +161,8 @@ func handlerSpecies(w http.ResponseWriter, r *http.Request) {
 		// read result for /species/*/name
 		bodyyear, err := ioutil.ReadAll(respyear.Body)
 		if err != nil {
-			log.Fatalln(err)
+			http.Error(w, "Reading error", http.StatusInternalServerError)
+			fmt.Println(http.StatusInternalServerError)
 		}
 
 		// json parsing for /species/*/name
